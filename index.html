@@ -236,7 +236,7 @@ header.home-mode { background: transparent; border-bottom: 1px solid transparent
 header.home-mode .logo { display: none; }
 header.home-mode .nav-btn,
 header.home-mode #mock-login-btn,
-header.home-mode .g_id_signin,
+header.home-mode #header-google-signin,
 header.home-mode [style*="width:1px"] { display: none !important; }
 
 /* ---- Google-style 홈 레이아웃 ---- */
@@ -437,8 +437,7 @@ header.home-mode [style*="width:1px"] { display: none !important; }
     </div>
     <!-- 2행: 네비 버튼 -->
     <nav class="nav-actions nav-actions-wrap">
-      <div id="g_id_onload" data-client_id="311516162770-114keptap6s6l0c5a3nu46l9fkb8c4uo.apps.googleusercontent.com" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
-      <div class="g_id_signin" data-type="standard" data-shape="pill" data-theme="filled_black" data-text="signin" data-size="medium" data-logo_alignment="left"></div>
+      <div id="header-google-signin"></div>
       <div style="width:1px;height:18px;background:var(--border);margin:0 4px;"></div>
       <button class="nav-btn" onclick="mockLogin()" id="mock-login-btn" style="border:1px solid var(--border);color:var(--text2);padding:7px 17px;">테스트 로그인</button>
       <button class="nav-btn" onclick="switchTab('rank')" id="nav-rank">🏆 랭킹</button>
@@ -486,7 +485,7 @@ header.home-mode [style*="width:1px"] { display: none !important; }
 
     <!-- 하위 메뉴 버튼 -->
     <div class="home-actions" id="home-actions">
-      <div id="home-google-signin" class="g_id_signin" data-type="standard" data-shape="pill" data-theme="filled_black" data-text="signin_with" data-size="medium" data-logo_alignment="left"></div>
+      <div id="home-google-signin"></div>
       <button class="home-action-btn" id="home-login-btn" onclick="mockLogin()" style="border-color:var(--amber);color:var(--amber);">🔑 테스트 로그인</button>
       <button class="home-action-btn" onclick="switchTab('rank')">🏆 랭킹 전체보기</button>
       <button class="home-action-btn" id="home-my-btn" onclick="switchTab('my')" style="display:none;">📝 내 평가</button>
@@ -584,9 +583,43 @@ function getYtParams() {
 // ---------------- 사용자 (로그인) 시스템 ----------------
 let currentUser = null;
 
+const GOOGLE_CLIENT_ID = '311516162770-114keptap6s6l0c5a3nu46l9fkb8c4uo.apps.googleusercontent.com';
+
+function initGoogleSignIn() {
+  if(!window.google || !google.accounts) return;
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleGoogleLogin,
+    auto_select: false
+  });
+  // 헤더 버튼 (데스크탑/랭킹탭)
+  const headerBtn = document.getElementById('header-google-signin');
+  if(headerBtn) {
+    google.accounts.id.renderButton(headerBtn, {
+      theme: 'filled_black', size: 'medium', shape: 'pill', text: 'signin_with'
+    });
+  }
+  // 홈 화면 버튼 (모바일 포함)
+  const homeBtn = document.getElementById('home-google-signin');
+  if(homeBtn) {
+    google.accounts.id.renderButton(homeBtn, {
+      theme: 'filled_black', size: 'medium', shape: 'pill', text: 'signin_with'
+    });
+  }
+}
+
 function initAuth() {
   const savedUser = localStorage.getItem('melodyrank_user');
   if(savedUser) { currentUser = JSON.parse(savedUser); updateUserUI(); }
+  // GSI 스크립트 로드 완료 후 버튼 렌더링
+  if(window.google && google.accounts) {
+    initGoogleSignIn();
+  } else {
+    window.onGoogleLibraryLoad = initGoogleSignIn;
+    // 폴백: 1초 후 재시도 (모바일 느린 로딩 대비)
+    setTimeout(initGoogleSignIn, 1000);
+    setTimeout(initGoogleSignIn, 2500);
+  }
 }
 
 function handleGoogleLogin(response) {
@@ -622,7 +655,7 @@ function logout() {
 }
 
 function updateUserUI() {
-  const btnGoogle = document.querySelector('.g_id_signin');
+  const btnGoogle = document.getElementById('header-google-signin');
   const btnMock = document.getElementById('mock-login-btn');
   const btnMy = document.getElementById('nav-my');
   const homeMy = document.getElementById('home-my-btn');
